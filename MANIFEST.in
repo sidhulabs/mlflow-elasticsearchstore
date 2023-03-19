@@ -1,2 +1,0 @@
-include versioneer.py
-include mlflow_elasticsearchstore/_version.py

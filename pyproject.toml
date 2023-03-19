@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "mlflow-elasticsearchstore"
+version = "0.1.0"
+description = "Mlflow Elasticsearch plugin"
+authors = ["Ashton Sidhu <ashton.sidhu1994@gmail.com>"]
+readme = "README.md"
+packages = [{include = "mlflow_elasticsearchstore"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+elasticsearch = "^8.6.2"
+llvmlite = "^0.39.1"
+numba = "^0.56.4"
+mlflow = "^2.2.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
