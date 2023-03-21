@@ -10,40 +10,56 @@ from mlflow.entities import (
     RunInfo,
     RunTag,
 )
+from mlflow.entities.lifecycle_stage import LifecycleStage
 from pydantic import BaseModel
 
 
+class ElasticExperiment(BaseModel):
+    experiment_id: str
+    name: str
+    artifact_location: str
+    tags: ExperimentTag
+    lifecycle_stage: str = LifecycleStage.ACTIVE
+    creation_time: datetime = datetime.now()
+    last_update_time: datetime = datetime.now()
+
+    def to_mlflow_entity(self) -> Experiment:
+        return Experiment(
+            experiment_id=self.experiment_id,
+            name=self.name,
+            artifact_location=self.artifact_location,
+            lifecycle_stage=self.lifecycle_stage,
+            tags=[t.to_mlflow_entity() for t in self.tags],
+            creation_time=self.creation_time,
+            last_update_time=self.last_update_time,
+        )
+
+
 class ElasticExperimentTag(BaseModel):
-    key = str
-    value = str
+    key: str
+    value: str
+    experiment_id: str
 
     def to_mlflow_entity(self) -> ExperimentTag:
         return ExperimentTag(key=self.key, value=self.value)
 
 
-class ElasticExperiment(BaseModel):
-    name = str
-    artifact_location = str
-    lifecycle_stage = str
-    tags = ExperimentTag
+class ElasticTag(BaseModel):
+    key: str
+    value: str
+    run_id: str
 
-    def to_mlflow_entity(self) -> Experiment:
-        return Experiment(
-            experiment_id=str(self.meta.id),
-            name=self.name,
-            artifact_location=self.artifact_location,
-            lifecycle_stage=self.lifecycle_stage,
-            tags=[t.to_mlflow_entity() for t in self.tags],
-        )
+    def to_mlflow_entity(self) -> RunTag:
+        return RunTag(key=self.key, value=self.value)
 
 
 class ElasticMetric(BaseModel):
-    key = str
-    value = float
-    timestamp = datetime
-    step = int
-    is_nan = bool
-    run_id = str
+    key: str
+    value: float
+    timestamp: datetime = datetime.now()
+    step: int
+    is_nan: bool
+    run_id: str
 
     def to_mlflow_entity(self) -> Metric:
         return Metric(
@@ -55,11 +71,11 @@ class ElasticMetric(BaseModel):
 
 
 class ElasticLatestMetric(BaseModel):
-    key = str
-    value = float
-    timestamp = datetime
-    step = int
-    is_nan = bool
+    key: str
+    value: float
+    timestamp: datetime = datetime.now()
+    step: int
+    is_nan: bool
 
     def to_mlflow_entity(self) -> Metric:
         return Metric(
@@ -71,42 +87,35 @@ class ElasticLatestMetric(BaseModel):
 
 
 class ElasticParam(BaseModel):
-    key = str
-    value = str
+    key: str
+    value: str
+    run_id: str
 
     def to_mlflow_entity(self) -> Param:
         return Param(key=self.key, value=self.value)
 
 
-class ElasticTag(BaseModel):
-    key = str
-    value = str
-
-    def to_mlflow_entity(self) -> RunTag:
-        return RunTag(key=self.key, value=self.value)
-
-
 class ElasticRun(BaseModel):
-    run_id = str
-    name = str
-    source_type = str
-    source_name = str
-    experiment_id = str
-    user_id = str
-    status = str
-    start_time = datetime
-    end_time = datetime
-    source_version = str
-    lifecycle_stage = str
-    artifact_uri = str
-    latest_metrics = ElasticLatestMetric
-    params = ElasticParam
-    tags = ElasticTag
+    run_id: str
+    name: str
+    source_type: str
+    source_name: str
+    experiment_id: str
+    user_id: str
+    status: str
+    start_time: datetime = datetime.now()
+    end_time: datetime
+    source_version: str
+    lifecycle_stage: str = LifecycleStage.ACTIVE
+    artifact_uri: str
+    latest_metrics: ElasticLatestMetric
+    params: ElasticParam
+    tags: ElasticTag
 
     def to_mlflow_entity(self) -> Run:
         run_info = RunInfo(
-            run_uuid=self.meta.id,
-            run_id=self.meta.id,
+            run_uuid=self.run_id,
+            run_id=self.run_id,
             experiment_id=str(self.experiment_id),
             user_id=self.user_id,
             status=self.status,
