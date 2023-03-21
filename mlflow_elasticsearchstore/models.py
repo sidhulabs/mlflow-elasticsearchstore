@@ -1,32 +1,31 @@
-import datetime
-from elasticsearch_dsl import (Document, InnerDoc, Nested, Text,
-                               Keyword, Double, Integer, Long, Boolean)
+from datetime import datetime
 
-from mlflow.entities import (Experiment, RunTag, Metric, Param,
-                             RunData, RunInfo, Run, ExperimentTag)
+from mlflow.entities import (
+    Experiment,
+    ExperimentTag,
+    Metric,
+    Param,
+    Run,
+    RunData,
+    RunInfo,
+    RunTag,
+)
+from pydantic import BaseModel
 
 
-class ElasticExperimentTag(InnerDoc):
-    key = Keyword()
-    value = Text()
+class ElasticExperimentTag(BaseModel):
+    key = str
+    value = str
 
     def to_mlflow_entity(self) -> ExperimentTag:
-        return ExperimentTag(key=self.key,
-                             value=self.value)
+        return ExperimentTag(key=self.key, value=self.value)
 
 
-class ElasticExperiment(Document):
-    name = Keyword()
-    artifact_location = Text()
-    lifecycle_stage = Keyword()
-    tags = Nested(ElasticExperimentTag)
-
-    class Index:
-        name = 'mlflow-experiments'
-        settings = {
-            "number_of_shards": 1,
-            "number_of_replicas": 1
-        }
+class ElasticExperiment(BaseModel):
+    name = str
+    artifact_location = str
+    lifecycle_stage = str
+    tags = ExperimentTag
 
     def to_mlflow_entity(self) -> Experiment:
         return Experiment(
@@ -34,90 +33,75 @@ class ElasticExperiment(Document):
             name=self.name,
             artifact_location=self.artifact_location,
             lifecycle_stage=self.lifecycle_stage,
-            tags=[t.to_mlflow_entity() for t in self.tags])
+            tags=[t.to_mlflow_entity() for t in self.tags],
+        )
 
 
-class ElasticMetric(Document):
-    key = Keyword()
-    value = Double()
-    timestamp = Long()
-    step = Integer()
-    is_nan = Boolean()
-    run_id = Keyword()
-
-    class Index:
-        name = 'mlflow-metrics'
-        settings = {
-            "number_of_shards": 2,
-            "number_of_replicas": 2
-        }
+class ElasticMetric(BaseModel):
+    key = str
+    value = float
+    timestamp = datetime
+    step = int
+    is_nan = bool
+    run_id = str
 
     def to_mlflow_entity(self) -> Metric:
         return Metric(
             key=self.key,
-            value=self.value if not self.is_nan else float("nan"),
+            value=float("nan") if self.is_nan else self.value,
             timestamp=self.timestamp,
-            step=self.step)
+            step=self.step,
+        )
 
 
-class ElasticLatestMetric(InnerDoc):
-    key = Keyword()
-    value = Double()
-    timestamp = Long()
-    step = Integer()
-    is_nan = Boolean()
+class ElasticLatestMetric(BaseModel):
+    key = str
+    value = float
+    timestamp = datetime
+    step = int
+    is_nan = bool
 
     def to_mlflow_entity(self) -> Metric:
         return Metric(
             key=self.key,
-            value=self.value if not self.is_nan else float("nan"),
+            value=float("nan") if self.is_nan else self.value,
             timestamp=self.timestamp,
-            step=self.step)
+            step=self.step,
+        )
 
 
-class ElasticParam(InnerDoc):
-    key = Keyword()
-    value = Keyword()
+class ElasticParam(BaseModel):
+    key = str
+    value = str
 
     def to_mlflow_entity(self) -> Param:
-        return Param(
-            key=self.key,
-            value=self.value)
+        return Param(key=self.key, value=self.value)
 
 
-class ElasticTag(InnerDoc):
-    key = Keyword()
-    value = Keyword()
+class ElasticTag(BaseModel):
+    key = str
+    value = str
 
     def to_mlflow_entity(self) -> RunTag:
-        return RunTag(
-            key=self.key,
-            value=self.value)
+        return RunTag(key=self.key, value=self.value)
 
 
-class ElasticRun(Document):
-    run_id = Keyword()
-    name = Keyword()
-    source_type = Keyword()
-    source_name = Keyword()
-    experiment_id = Keyword()
-    user_id = Keyword()
-    status = Keyword()
-    start_time = Long()
-    end_time = Long()
-    source_version = Keyword()
-    lifecycle_stage = Keyword()
-    artifact_uri = Text()
-    latest_metrics = Nested(ElasticLatestMetric)
-    params = Nested(ElasticParam)
-    tags = Nested(ElasticTag)
-
-    class Index:
-        name = 'mlflow-runs'
-        settings = {
-            "number_of_shards": 2,
-            "number_of_replicas": 2
-        }
+class ElasticRun(BaseModel):
+    run_id = str
+    name = str
+    source_type = str
+    source_name = str
+    experiment_id = str
+    user_id = str
+    status = str
+    start_time = datetime
+    end_time = datetime
+    source_version = str
+    lifecycle_stage = str
+    artifact_uri = str
+    latest_metrics = ElasticLatestMetric
+    params = ElasticParam
+    tags = ElasticTag
 
     def to_mlflow_entity(self) -> Run:
         run_info = RunInfo(
@@ -129,10 +113,12 @@ class ElasticRun(Document):
             start_time=self.start_time,
             end_time=self.end_time,
             lifecycle_stage=self.lifecycle_stage,
-            artifact_uri=self.artifact_uri)
+            artifact_uri=self.artifact_uri,
+        )
 
         run_data = RunData(
             metrics=[m.to_mlflow_entity() for m in self.latest_metrics],
             params=[p.to_mlflow_entity() for p in self.params],
-            tags=[t.to_mlflow_entity() for t in self.tags])
+            tags=[t.to_mlflow_entity() for t in self.tags],
+        )
         return Run(run_info=run_info, run_data=run_data)
